@@ -1,28 +1,39 @@
 import os
 import google.generativeai as genai
+from openai import OpenAI
 from dotenv import load_dotenv
 from tools import web_search_tool, literature_tool
 
 load_dotenv()
 
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
-api_key = os.getenv("GEMINI_API_KEY")
 # Use fallback only when explicitly enabled in .env.
 # Set ENABLE_FALLBACK=true to use mock output when the API is unavailable.
 fallback_enabled = os.getenv("ENABLE_FALLBACK", "false").lower() in ("1", "true", "yes")
-model = None
+
+gemini_model = None
+openai_client = None
 api_init_error = None
 
-if api_key:
+if openai_api_key:
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("models/gemini-2.5-flash")
+        openai_client = OpenAI(api_key=openai_api_key)
+        print("OpenAI API key loaded and client initialized.")
+    except Exception as e:
+        api_init_error = f"OpenAI API initialization failed: {e}"
+        print(api_init_error)
+elif gemini_api_key:
+    try:
+        genai.configure(api_key=gemini_api_key)
+        gemini_model = genai.GenerativeModel("models/gemini-2.5-flash")
         print("Gemini API key loaded and model initialized.")
     except Exception as e:
-        api_init_error = str(e)
-        print("Gemini API initialization failed:", api_init_error)
+        api_init_error = f"Gemini API initialization failed: {e}"
+        print(api_init_error)
 else:
-    api_init_error = "GEMINI_API_KEY missing from .env"
+    api_init_error = "Neither OPENAI_API_KEY nor GEMINI_API_KEY found in .env"
     print(api_init_error)
 
 
@@ -40,9 +51,23 @@ def mock_llm_response(prompt, error=None):
 
 
 def call_llm(prompt):
-    if model:
+    if openai_client:
         try:
-            response = model.generate_content(prompt)
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print("OpenAI API call failed:", str(e))
+            if fallback_enabled:
+                return mock_llm_response(prompt, error=str(e))
+            raise RuntimeError(f"OpenAI API call failed: {e}")
+
+    if gemini_model:
+        try:
+            response = gemini_model.generate_content(prompt)
             return response.text if response.text else "No response"
         except Exception as e:
             print("Gemini API call failed:", str(e))
@@ -50,7 +75,7 @@ def call_llm(prompt):
                 return mock_llm_response(prompt, error=str(e))
             raise RuntimeError(f"Gemini API call failed: {e}")
 
-    error_message = api_init_error or "Gemini API is not initialized."
+    error_message = api_init_error or "No AI API is initialized."
     print(error_message)
     if fallback_enabled:
         return mock_llm_response(prompt, error=error_message)
@@ -127,5 +152,3 @@ def run_agent(user_input):
         context += f"\n\nTool Output:\n{tool_output}"
 
     return generate_final(context)
-
-print(genai.list_models())
