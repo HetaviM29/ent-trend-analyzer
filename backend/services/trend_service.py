@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+from typing import Optional
+
 mock_trends = [
     {
         "id": 1, "keyword": "Herbal Skincare", "category": "Skin", "mentions": 12450, "growth": "+45%", 
@@ -37,18 +40,66 @@ mock_trends = [
     }
 ]
 
-def get_all_trends():
-    return [
-        {
-            "id": t["id"],
-            "keyword": t["keyword"],
-            "category": t["category"],
-            "mentions": t["mentions"],
-            "growth": t["growth"],
-            "platform": t["platform"],
-            "authenticity": t["authenticity"]
-        } for t in mock_trends
-    ]
+def _live_mentions(base_mentions: int, trend_id: int) -> int:
+    """
+    Simulate real-time motion so the UI updates when polling.
+    Deterministic per minute to avoid large jitter.
+    """
+    now = datetime.now(timezone.utc)
+    minute_bucket = now.hour * 60 + now.minute
+    swing = ((minute_bucket + trend_id * 7) % 11) - 5  # -5..+5
+    factor = 1 + (swing / 100.0)
+    return max(0, int(base_mentions * factor))
+
+
+def _live_growth(base_growth: str, trend_id: int) -> str:
+    try:
+        base_value = int(base_growth.replace("%", "").replace("+", "").strip())
+    except ValueError:
+        return base_growth
+    now = datetime.now(timezone.utc)
+    swing = ((now.minute + trend_id * 3) % 5) - 2  # -2..+2
+    value = max(0, base_value + swing)
+    return f"+{value}%"
+
+
+def _project_trend(trend: dict, live: bool = True):
+    mentions = _live_mentions(trend["mentions"], trend["id"]) if live else trend["mentions"]
+    growth = _live_growth(trend["growth"], trend["id"]) if live else trend["growth"]
+    return {
+        "id": trend["id"],
+        "keyword": trend["keyword"],
+        "category": trend["category"],
+        "mentions": mentions,
+        "growth": growth,
+        "platform": trend["platform"],
+        "authenticity": trend["authenticity"]
+    }
+
+
+def _query_matches(trend: dict, search: str) -> bool:
+    haystack = f'{trend["keyword"]} {trend["category"]} {trend["platform"]} {trend["authenticity"]}'.lower()
+    return search.lower() in haystack
+
+
+def get_all_trends(
+    category: Optional[str] = None,
+    platform: Optional[str] = None,
+    authenticity: Optional[str] = None,
+    search: Optional[str] = None,
+    live: bool = True,
+):
+    filtered = mock_trends
+    if category and category != "All":
+        filtered = [t for t in filtered if t["category"] == category]
+    if platform and platform != "All":
+        filtered = [t for t in filtered if t["platform"] == platform]
+    if authenticity and authenticity != "All":
+        filtered = [t for t in filtered if t["authenticity"] == authenticity]
+    if search:
+        filtered = [t for t in filtered if _query_matches(t, search)]
+
+    return [_project_trend(t, live=live) for t in filtered]
 
 def get_trend_by_id(trend_id: int):
     for t in mock_trends:

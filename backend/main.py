@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
@@ -33,9 +33,36 @@ def home():
     return {"message": "Agent is running 🚀"}
 
 @app.get("/trends")
-def get_trends():
-    trends = trend_service.get_all_trends()
+def get_trends(
+    category: Optional[str] = Query(default=None),
+    platform: Optional[str] = Query(default=None),
+    authenticity: Optional[str] = Query(default=None),
+    search: Optional[str] = Query(default=None),
+    live: bool = Query(default=True),
+):
+    trends = trend_service.get_all_trends(
+        category=category,
+        platform=platform,
+        authenticity=authenticity,
+        search=search,
+        live=live,
+    )
     return {"trends": trends}
+
+
+@app.get("/trends/live")
+def get_live_trends(search: Optional[str] = Query(default=None)):
+    """
+    Live trends endpoint that can include optional agent enrichment for search intent.
+    """
+    trends = trend_service.get_all_trends(search=search, live=True)
+    agent_summary = None
+    if search:
+        try:
+            agent_summary = run_agent(f"Summarize live health social trend signals for: {search}")
+        except Exception as e:
+            agent_summary = f"Agent unavailable: {e}"
+    return {"trends": trends, "agent_summary": agent_summary}
 
 @app.get("/trend/{id}")
 def get_trend_details(id: int):

@@ -208,26 +208,59 @@ const TrendsList = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({ category: "All", platform: "All", authenticity: "All" });
+  const [agentSummary, setAgentSummary] = useState("");
 
   useEffect(() => {
-    axios.get(`${API_URL}/trends`)
-      .then(res => {
-        setTrends(res.data.trends);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Error fetching trends:", err);
-        setLoading(false);
-      });
-  }, []);
+    let mounted = true;
 
-  const filteredTrends = trends.filter(t => {
-    const matchesSearch = t.keyword.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filters.category === "All" || t.category === filters.category;
-    const matchesPlatform = filters.platform === "All" || t.platform === filters.platform;
-    const matchesAuth = filters.authenticity === "All" || t.authenticity === filters.authenticity;
-    return matchesSearch && matchesCategory && matchesPlatform && matchesAuth;
-  });
+    const fetchLiveTrends = async () => {
+      try {
+        const params = {
+          category: filters.category,
+          platform: filters.platform,
+          authenticity: filters.authenticity,
+          search: searchTerm || undefined,
+          live: true
+        };
+        const res = await axios.get(`${API_URL}/trends`, { params });
+        if (mounted) {
+          setTrends(res.data.trends || []);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Error fetching trends:", err);
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchLiveTrends();
+    const intervalId = setInterval(fetchLiveTrends, 15000);
+    return () => {
+      mounted = false;
+      clearInterval(intervalId);
+    };
+  }, [filters, searchTerm]);
+
+  useEffect(() => {
+    let mounted = true;
+    const timer = setTimeout(async () => {
+      if (!searchTerm.trim()) {
+        if (mounted) setAgentSummary("");
+        return;
+      }
+      try {
+        const res = await axios.get(`${API_URL}/trends/live`, { params: { search: searchTerm } });
+        if (mounted) setAgentSummary(res.data.agent_summary || "");
+      } catch (err) {
+        if (mounted) setAgentSummary("");
+      }
+    }, 500);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+    };
+  }, [searchTerm]);
 
   if (loading) return <div className="loading-state"><div className="spinner-large"></div></div>;
 
@@ -277,8 +310,15 @@ const TrendsList = () => {
         </div>
       </div>
 
+      {agentSummary && (
+        <div className="info-panel mt-4">
+          <h3><Bot size={18} className="mr-2" /> Agent Insight for "{searchTerm}"</h3>
+          <p className="panel-text">{typeof agentSummary === "string" ? agentSummary : JSON.stringify(agentSummary)}</p>
+        </div>
+      )}
+
       <div className="trends-grid mt-6">
-        {filteredTrends.map(trend => (
+        {trends.map(trend => (
           <div key={trend.id} className="trend-card interactive" onClick={() => navigate(`/trend/${trend.id}`)}>
             <div className="trend-card-header">
               <Badge type="primary">{trend.category}</Badge>
@@ -303,7 +343,7 @@ const TrendsList = () => {
             </div>
           </div>
         ))}
-        {filteredTrends.length === 0 && (
+        {trends.length === 0 && (
           <div className="empty-state">No trends found matching your filters.</div>
         )}
       </div>
