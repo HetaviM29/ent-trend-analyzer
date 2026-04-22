@@ -574,47 +574,49 @@ function App() {
     <BrowserRouter>
       <div className="app-layout">
         
-        {/* Sidebar */}
-        <aside className="sidebar">
-          <div className="sidebar-header">
-            <div className="logo-icon"><Activity size={24} color="#fff" /></div>
-            <h2>HealthIntel</h2>
-          </div>
-          <nav className="nav-links">
-            <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`} end>
-              <LayoutDashboard size={20} />
-              Home
-            </NavLink>
-            <NavLink to="/trends" className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
-              <TrendingUp size={20} />
-              Trends Explorer
-            </NavLink>
-            <NavLink to="/categories" className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
-              <FolderOpen size={20} />
-              Categories
-            </NavLink>
-            <NavLink to="/analyzer" className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
-              <Bot size={20} />
-              AI Analyzer
-            </NavLink>
-          </nav>
-        </aside>
-
         {/* Main Content Area */}
-        <main className="main-content">
+        <main className="main-content" style={{ width: '100vw' }}>
           {/* Top Navbar */}
           <header className="topbar">
-            <div className="search-bar-top">
-              <Search size={18} color="#94a3b8" />
-              <input type="text" placeholder="Quick search..." />
+            <div className="topbar-left" style={{ display: 'flex', alignItems: 'center' }}>
+              <div className="topbar-logo" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginRight: '3rem' }}>
+                <div className="logo-icon"><Activity size={24} color="#fff" /></div>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 700, background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>HealthIntel</h2>
+              </div>
+
+              <nav className="top-nav-links">
+                <NavLink to="/" className={({ isActive }) => `top-nav-item ${isActive ? "active" : ""}`} end>
+                  <LayoutDashboard size={18} />
+                  Home
+                </NavLink>
+                <NavLink to="/trends" className={({ isActive }) => `top-nav-item ${isActive ? "active" : ""}`}>
+                  <TrendingUp size={18} />
+                  Trends Explorer
+                </NavLink>
+                <NavLink to="/categories" className={({ isActive }) => `top-nav-item ${isActive ? "active" : ""}`}>
+                  <FolderOpen size={18} />
+                  Categories
+                </NavLink>
+                <NavLink to="/analyzer" className={({ isActive }) => `top-nav-item ${isActive ? "active" : ""}`}>
+                  <Bot size={18} />
+                  AI Analyzer
+                </NavLink>
+              </nav>
             </div>
-            <div className="topbar-actions">
-              <button className="icon-btn">
-                <Bell size={20} />
-              </button>
-              <div className="user-profile">
-                <img src="https://i.pravatar.cc/150?img=68" alt="User" />
-                <span>Jane Doe</span>
+
+            <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+              <div className="search-bar-top">
+                <Search size={18} color="#94a3b8" />
+                <input type="text" placeholder="Quick search..." />
+              </div>
+              <div className="topbar-actions">
+                <button className="icon-btn">
+                  <Bell size={20} />
+                </button>
+                <div className="user-profile">
+                  <img src="https://i.pravatar.cc/150?img=68" alt="User" />
+                  <span>Jane Doe</span>
+                </div>
               </div>
             </div>
           </header>
